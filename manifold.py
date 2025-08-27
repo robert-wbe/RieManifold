@@ -28,7 +28,6 @@ class RiemannianManifold(ABC):
         return result
 
 
-
     def Gamma(self, coords) -> torch.Tensor:
         """return the Christoffel symbols at the given extrinsic coordinates"""
         coords = torch.as_tensor(coords)
@@ -37,7 +36,38 @@ class RiemannianManifold(ABC):
         
         g_inverse = torch.linalg.inv(self.g(coords))
         return 0.5 * torch.einsum('im, mkl->ikl', g_inverse, sum_deriv)
+    
+
+    def is_geodesic(self, curve, resolution=100) -> bool:
+        ts = torch.linspace(0.0, 1.0, resolution)
+
+        def v(t): # input: single number
+            return torch.autograd.functional.jacobian(curve, t, create_graph=True)
+        def dv_dt(t): # input: single number
+            return torch.autograd.functional.jacobian(v, t)
+
+        return all(
+            torch.allclose(
+                dv_dt(t),
+                -torch.einsum('kij, i, j -> k', self.Gamma(curve(t)), v(t), v(t))
+            )
+            for t in ts
+        )
+    
+    def source_geodesic(self, start_coords, initial_veloity, length = 1.0, resolution = 100):
+        x, v = torch.as_tensor(start_coords), torch.as_tensor(initial_veloity)
+        v /= resolution
         
+        curve_coords = [x.clone()]
+        cur_length = 0.0
+        while cur_length < length:
+            v -= torch.einsum('kij, i, j -> k', self.Gamma(x), v, v)
+            cur_length += torch.sqrt(torch.einsum('ij, i, j -> ', self.g(x), v, v))
+            x += v
+            curve_coords.append(x.clone())
+        return torch.stack(curve_coords).T
+
+
 
     def R(self, coords) -> np.ndarray:
         """return the Riemannian curvature tensor at the given exirinsic coordinates"""
@@ -150,14 +180,27 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
                 raise NotImplementedError
         if new_plot: plt.show()
 
+    def __show_curve_tensor(self, UV):
+        X, Y, Z = self.embedded(UV).detach()
+        self.plt_ax.plot(X, Y, Z, color='red')
+
     def show_curve(self, curve, new_plot: bool = True):
         if new_plot: self.plt_init()
         self.show(new_plot=False)
 
         t = torch.linspace(0.0, 1.0, 100)
         UV = np.asarray(curve(t))
-        X, Y, Z = self.embedded(UV)
-        self.plt_ax.plot(X, Y, Z, color='red')
+        self.__show_curve_tensor(UV)
+
+        if new_plot: plt.show()
+
+    
+    def draw_source_geodesic(self, start_coords, initial_veloity, tmax = 1.0, resolution = 100, new_plot: bool = True):
+        if new_plot: self.plt_init()
+        self.show(new_plot=False)
+
+        UV = self.source_geodesic(start_coords, initial_veloity, tmax, resolution)
+        self.__show_curve_tensor(UV)
 
         if new_plot: plt.show()
 
