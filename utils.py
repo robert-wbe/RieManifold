@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import proj3d
 from matplotlib.patches import FancyArrowPatch
 import numpy as np
+import torch
 
 class Arrow3D(FancyArrowPatch):
     def __init__(self, xs, ys, zs, *args, **kwargs):
@@ -40,3 +41,7 @@ def draw_2d_arrow(pos, dir, ax, color='r'):
                         zorder=2)
 
     ax.add_patch(arrow)
+
+def coord_lerp(p1, p2):
+    p1, p2 = torch.as_tensor(p1), torch.as_tensor(p2)
+    return lambda t: torch.stack(((1-t)*p1[0]+t*p2[0], (1-t)*p1[1]+t*p2[1]))
