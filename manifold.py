@@ -339,6 +339,23 @@ class PolarPlane(EmbeddedRiemannianManifold):
             r * torch.sin(phi),
         ))
 
+class Torus(EmbeddedRiemannianManifold):
+    embedding_dim = 3
+    def __init__(self, ro: float, ri: float):
+        self.ro = ro
+        self.ri = ri
+
+    coordinate_domain = [0.0, 2*torch.pi], [0.0, 2*torch.pi]
+    default_subdivisions = 61, 26
+
+    def embedded(self, coords: torch.Tensor) -> torch.Tensor:
+        phi_o, phi_i = torch.as_tensor(coords)
+        return torch.stack((
+            (self.ro + self.ri*torch.cos(phi_i)) * torch.cos(phi_o),
+            (self.ro + self.ri*torch.cos(phi_i)) * torch.sin(phi_o),
+            self.ri * torch.sin(phi_i)
+        ))
+
 if __name__ == "__main__":
     plane = PolarPlane()
     plane.show_point(torch.tensor([torch.pi/6, 2.0]))
