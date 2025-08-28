@@ -22,15 +22,15 @@ class Arrow3D(FancyArrowPatch):
         return np.min(zs)  # z-ordering
         # return 100
 
-def draw_3d_arrow(pos, dir, ax, color='r'):
+def draw_3d_arrow(pos, dir, ax, color='r', opacity=1.0):
     x, y, z = pos
     dx, dy, dz = dir
     arrow = Arrow3D([x, x+dx], [y, y+dy], [z, z+dz],
                 mutation_scale=20,
-                lw=2, arrowstyle="-|>", color=color)
+                lw=2, arrowstyle="-|>", color=color, alpha=opacity)
     ax.add_artist(arrow)
 
-def draw_2d_arrow(pos, dir, ax, color='r'):
+def draw_2d_arrow(pos, dir, ax, color='r', opacity=1.0):
     x, y = pos
     dx, dy = dir
     arrow = FancyArrowPatch((x, y), (x+dx, y+dy),
@@ -38,7 +38,8 @@ def draw_2d_arrow(pos, dir, ax, color='r'):
                         mutation_scale=20,   # size of arrow head
                         color=color,
                         linewidth=2,
-                        zorder=2)
+                        zorder=2,
+                        alpha=opacity)
 
     ax.add_patch(arrow)
 
