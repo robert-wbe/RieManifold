@@ -57,7 +57,7 @@ class RiemannianManifold(ABC):
     def source_geodesic(self, start_coords, initial_veloity, length = 1.0, resolution = 100):
         x, v = torch.as_tensor(start_coords), torch.as_tensor(initial_veloity)
         v /= resolution
-        
+
         curve_coords = [x.clone()]
         cur_length = 0.0
         while cur_length < length:
@@ -111,6 +111,16 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
                 self.plt_ax = self.plt_fig.add_subplot(projection='3d', computed_zorder=False)
             case _:
                 raise NotImplementedError
+    
+    def plt_show(self):
+        match self.embedding_dim:
+            case 2:
+                self.plt_ax.set_aspect('equal', adjustable='box')
+            case 3:
+                set_axes_equal(self.plt_ax)
+            case _:
+                raise NotImplementedError
+        plt.show()
 
     def show(self, subdivisions: tuple[int, int] | None = None, new_plot: bool = True):
         subdivisions = subdivisions if subdivisions is not None else self.default_subdivisions
@@ -147,32 +157,35 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
                     linewidth=0.1, antialiased=False, alpha=1.0, edgecolor='k')
             case _:
                 raise NotImplementedError
-        if new_plot: plt.show()
+            
+        if new_plot: self.plt_show()
 
-    def show_point(self, coords, new_plot: bool = True, label: bool = False):
+    def show_point(self, coords, show_basis: bool = True, new_plot: bool = True, label: bool = False, opacity = 1.0):
         coords = torch.as_tensor(coords)
-        if new_plot: self.plt_init()
-        self.show(new_plot=False)
+        if new_plot: self.plt_init(); self.show(new_plot=False)
         match self.embedding_dim:
             case 2:
                 u, v = coords
                 X, Y = self.embedded(coords)
                 eu, ev = self.basis(coords).T
-                draw_2d_arrow((X, Y), eu.detach(), self.plt_ax, color='b')
-                draw_2d_arrow((X, Y), ev.detach(), self.plt_ax, color='orange')
-                self.plt_ax.scatter(X, Y, color='red', s=60, zorder=3) #type:ignore
+                if show_basis:
+                    draw_2d_arrow((X, Y), eu.detach(), self.plt_ax, color='b', opacity=opacity)
+                    draw_2d_arrow((X, Y), ev.detach(), self.plt_ax, color='orange', opacity=opacity)
+                self.plt_ax.scatter(X, Y, color='red', s=60, zorder=3, alpha=opacity) #type:ignore
                 eps = 0.1
-                self.plt_ax.text(X+eu.detach()[0]+eps, Y+eu.detach()[1]+eps, "$e_u$", color='b', fontsize=13, zorder=3) #type:ignore
-                self.plt_ax.text(X+ev.detach()[0]+eps, Y+ev.detach()[1]+eps, "$e_v$", color='orange', fontsize=13, zorder=3) #type:ignore
+                if show_basis:
+                    self.plt_ax.text(X+eu.detach()[0]+eps, Y+eu.detach()[1]+eps, "$e_u$", color='b', fontsize=13, zorder=3) #type:ignore
+                    self.plt_ax.text(X+ev.detach()[0]+eps, Y+ev.detach()[1]+eps, "$e_v$", color='orange', fontsize=13, zorder=3) #type:ignore
                 if label:
                     self.plt_ax.text(X+eps, Y+eps, f"({u:.2f}, {v:.2f})", color='red', fontsize=13) #type:ignore
             case 3:
                 u, v = coords
                 X, Y, Z = self.embedded(coords)
                 eu, ev = self.basis(coords).T
-                draw_3d_arrow((X, Y, Z), eu.detach(), self.plt_ax, color='b')
-                draw_3d_arrow((X, Y, Z), ev.detach(), self.plt_ax, color='orange')
-                self.plt_ax.scatter(X, Y, Z, color='red', s=60) #type:ignore
+                if show_basis:
+                    draw_3d_arrow((X, Y, Z), eu.detach(), self.plt_ax, color='b', opacity=opacity)
+                    draw_3d_arrow((X, Y, Z), ev.detach(), self.plt_ax, color='orange', opacity=opacity)
+                self.plt_ax.scatter(X, Y, Z, color='red', s=60, alpha=opacity) #type:ignore
                 if label:
                     eps = 0.1
                     self.plt_ax.text(X+eps, Y, Z+eps, f"({u:.2f}, {v:.2f})", color='red', fontsize=13) #type:ignore
@@ -185,19 +198,17 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
         self.plt_ax.plot(X, Y, Z, color='red')
 
     def show_curve(self, curve, new_plot: bool = True):
-        if new_plot: self.plt_init()
-        self.show(new_plot=False)
+        if new_plot: self.plt_init(); self.show(new_plot=False)
 
         t = torch.linspace(0.0, 1.0, 100)
         UV = np.asarray(curve(t))
         self.__show_curve_tensor(UV)
 
-        if new_plot: plt.show()
+        if new_plot: self.plt_show()
 
     
     def draw_source_geodesic(self, start_coords, initial_veloity, tmax = 1.0, resolution = 100, new_plot: bool = True):
-        if new_plot: self.plt_init()
-        self.show(new_plot=False)
+        if new_plot: self.plt_init(); self.show(new_plot=False)
 
         UV = self.source_geodesic(start_coords, initial_veloity, tmax, resolution)
         self.__show_curve_tensor(UV)
