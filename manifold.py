@@ -96,6 +96,10 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
         coords = torch.as_tensor(coords)
         jac: torch.Tensor = torch.autograd.functional.jacobian(self.embedded, coords, create_graph=True)
         return jac
+    
+    def tangential_vector(self, coords: torch.Tensor, vec: torch.Tensor) -> torch.Tensor:
+        coords, vec = torch.as_tensor(coords), torch.as_tensor(vec)
+        return self.basis(coords) @ vec
 
     def g(self, coords: torch.Tensor) -> torch.Tensor:
         coords = torch.as_tensor(coords)
@@ -191,7 +195,24 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
                     self.plt_ax.text(X+eps, Y, Z+eps, f"({u:.2f}, {v:.2f})", color='red', fontsize=13) #type:ignore
             case _:
                 raise NotImplementedError
-        if new_plot: plt.show()
+        if new_plot: self.plt_show()
+    
+    def __draw_tangential_vec(self, coords, vec, opacity=1.0):
+        t_vec = self.tangential_vector(coords, vec)
+        match self.embedding_dim:
+            case 2:
+                X, Y = self.embedded(coords).detach()
+                draw_2d_arrow((X, Y), t_vec.detach(), self.plt_ax, opacity=opacity)
+            case 3:
+                X, Y, Z = self.embedded(coords).detach()
+                draw_3d_arrow((X, Y, Z), t_vec.detach(), self.plt_ax, opacity=opacity)
+            case _:
+                raise NotImplementedError
+    
+    def show_tangential_vector(self, coords, vec, new_plot: bool = True, opacity=1.0):
+        if new_plot: self.plt_init(); self.show(new_plot=False)
+        self.__draw_tangential_vec(coords, vec, opacity=opacity)
+        if new_plot: self.plt_show()
 
     def __show_curve_tensor(self, UV):
         X, Y, Z = self.embedded(UV).detach()
