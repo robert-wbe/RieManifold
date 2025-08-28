@@ -43,6 +43,29 @@ def draw_2d_arrow(pos, dir, ax, color='r', opacity=1.0):
 
     ax.add_patch(arrow)
 
+def set_axes_equal(ax):
+    """Make axes of 3D plot have equal scale so that spheres appear as spheres."""
+    x_limits = ax.get_xlim3d()
+    y_limits = ax.get_ylim3d()
+    z_limits = ax.get_zlim3d()
+
+    x_range = abs(x_limits[1] - x_limits[0])
+    x_middle = np.mean(x_limits)
+    y_range = abs(y_limits[1] - y_limits[0])
+    y_middle = np.mean(y_limits)
+    z_range = abs(z_limits[1] - z_limits[0])
+    z_middle = np.mean(z_limits)
+
+    # The plot radius is half the max range of all axes
+    plot_radius = 0.5 * max([x_range, y_range, z_range])
+
+    ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+    ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+    ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
+
+    # Now fix the box aspect
+    ax.set_box_aspect([1, 1, 1])
+
 def coord_lerp(p1, p2):
     p1, p2 = torch.as_tensor(p1), torch.as_tensor(p2)
     return lambda t: torch.stack(((1-t)*p1[0]+t*p2[0], (1-t)*p1[1]+t*p2[1]))
