@@ -67,7 +67,24 @@ class RiemannianManifold(ABC):
             curve_coords.append(x.clone())
         return torch.stack(curve_coords).T
 
+    def parallel_transport(self, curve, vector, resolution = 100, n_substeps = 1):
+        vec = torch.as_tensor(vector)
+        ckpt_t = np.linspace(0, resolution-1, 1+n_substeps).astype(np.int32)[1:]
+        ckpt_coords, ckpt_vecs = [], []
 
+        def v(t): # input: single number
+            return torch.autograd.functional.jacobian(curve, t)
+        
+        for i, t in enumerate(torch.linspace(0.0, 1.0, resolution)):
+            vec -= torch.einsum('kij, i, j -> k', self.Gamma(curve(t)), v(t), vec) / resolution
+            if i in ckpt_t:
+                ckpt_coords.append(curve(t))
+                ckpt_vecs.append(vec.clone())
+        
+        if n_substeps == 1:
+            return curve(1.0), vec
+        return ckpt_coords, ckpt_vecs
+        
 
     def R(self, coords) -> np.ndarray:
         """return the Riemannian curvature tensor at the given exirinsic coordinates"""
@@ -234,7 +251,29 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
         UV = self.source_geodesic(start_coords, initial_veloity, tmax, resolution)
         self.__show_curve_tensor(UV)
 
-        if new_plot: plt.show()
+        if new_plot: self.plt_show()
+    
+    def show_parallel_transport(self, curve, vector, resolution = 100, n_substeps = 1, new_plot = True):
+        vector = torch.as_tensor(vector)
+        assert n_substeps > 0, "n_substeps must be at least one"
+        if new_plot: self.plt_init(); self.show(new_plot=False)
+        self.show_curve(curve, new_plot=False)
+        self.show_point(curve(0.0), show_basis=False, new_plot=False)
+        self.show_tangential_vector(curve(0.0), vector, new_plot=False)
+        
+        if n_substeps == 1:
+            f_coords, f_vec = self.parallel_transport(curve, vector, resolution, n_substeps)
+            self.show_point(f_coords, show_basis=False, new_plot=False)
+            self.show_tangential_vector(f_coords, f_vec, new_plot=False)
+        else:
+            coords, vecs = self.parallel_transport(curve, vector, resolution, n_substeps)
+            for coord, vec in zip(coords[:-1], vecs[:-1]):
+                # self.show_point(coord, show_basis=False, new_plot=False)
+                self.show_tangential_vector(coord, vec, new_plot=False, opacity=0.5)
+            self.show_point(coords[-1], show_basis=False, new_plot=False)
+            self.show_tangential_vector(coords[-1], vecs[-1], new_plot=False)
+
+        if new_plot: self.plt_show()
 
         
 
