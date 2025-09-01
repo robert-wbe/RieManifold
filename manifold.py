@@ -356,6 +356,23 @@ class Torus(EmbeddedRiemannianManifold):
             self.ri * torch.sin(phi_i)
         ))
 
+class MobiusStrip(EmbeddedRiemannianManifold):
+    embedding_dim = 3
+    def __init__(self, radius: float = 1.0, width: float = 1.0):
+        self.r = radius
+        self.w = width
+    
+    coordinate_domain = [0.0, 2*torch.pi], [-0.5, 0.5]
+    default_subdivisions = 62, 16
+
+    def embedded(self, coords: torch.Tensor) -> torch.Tensor:
+        phi, v = torch.as_tensor(coords)
+        return torch.stack((
+            (self.r + self.w*v*torch.cos(phi/2)) * torch.cos(phi),
+            (self.r + self.w*v*torch.cos(phi/2)) * torch.sin(phi),
+            self.w * v * torch.sin(phi/2)
+        ))
+
 if __name__ == "__main__":
     plane = PolarPlane()
     plane.show_point(torch.tensor([torch.pi/6, 2.0]))
