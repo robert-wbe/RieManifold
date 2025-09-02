@@ -248,8 +248,15 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
         if new_plot: self.plt_show()
 
     def __show_curve_tensor(self, UV):
-        X, Y, Z = self.embedded(UV).detach()
-        self.plt_ax.plot(X, Y, Z, color='red')
+        match self.embedding_dim:
+            case 2:
+                X, Y = self.embedded(UV).detach()
+                self.plt_ax.plot(X, Y, color='red')
+            case 3:
+                X, Y, Z = self.embedded(UV).detach()
+                self.plt_ax.plot(X, Y, Z, color='red')
+            case _:
+                raise NotImplementedError
 
     def show_curve(self, curve, new_plot: bool = True):
         if new_plot: self.plt_init(); self.show(new_plot=False)
@@ -261,10 +268,14 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
         if new_plot: self.plt_show()
 
     
-    def draw_source_geodesic(self, start_coords, initial_veloity, tmax = 1.0, resolution = 100, new_plot: bool = True):
+    def show_source_geodesic(self, start_coords, initial_veloity, length = 1.0, resolution = 100, new_plot: bool = True, show_initial_vector: bool = False):
         if new_plot: self.plt_init(); self.show(new_plot=False)
 
-        UV = self.source_geodesic(start_coords, initial_veloity, tmax, resolution)
+        self.show_point(start_coords, show_basis=False, new_plot=False)
+        if show_initial_vector:
+            self.show_tangential_vector(start_coords, initial_veloity, new_plot=False)
+
+        UV = self.source_geodesic(start_coords, initial_veloity, length, resolution)
         self.__show_curve_tensor(UV)
 
         if new_plot: self.plt_show()
