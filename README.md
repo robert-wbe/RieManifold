@@ -23,7 +23,7 @@ The following shows how to construct a 2-sphere embedded into 3-space:
 ```python
 class UVSphere(EmbeddedRiemannianManifold):
     embedding_dim = 3
-    def __init__(self, r: np.float64):
+    def __init__(self, r: float):
         self.r = r
 
     coordinate_domain = [0.0, 2*torch.pi], [0.0, torch.pi]
@@ -51,6 +51,20 @@ As shown in the example, these class attributes and methods must be supplied:
 
 **Method 2: Intrinsic Definition**
 
-Formally, a Riemannian metric on a coordinate domain $U$ is a smoothly varying covariant 2-tensor field representing the local inner product for the tangent space at each point. The inner product at each point $p$ is a bilinear form $g_p : T_pM \times T_pM \to \mathbb{R}$ called the *metric tensor* and is represented by an $n\times n$ matrix. This matrix, as a function of the coordinates, is what the user must specify for the intrinsic manifold specification method.
+It is also possible to define geometric concepts such as lengths, angles and curvature entirely intrinsically, through a mathematical object called a **Riemannian metric**. Formally, a Riemannian metric on a coordinate domain $U\sub\mathbb{R}^n$ is a smoothly varying covariant 2-tensor field  on $U$ representing the local inner product for the tangent space at each point. The inner product at each point $p$ is a bilinear form $g_p : T_pM \times T_pM \to \mathbb{R}$ called the *metric tensor* and is represented by an $n\times n$ matrix. This matrix, as a function of the coordinates, is what the user must specify for the intrinsic manifold specification method.
+
+The following example shows how to create the same sphere manifold as shown above, but purely intrinsically:
+```python
+class UVSphere(EmbeddedRiemannianManifold):
+    def __init__(self, r: float):
+        self.r = r
+    
+    def g(self, coords):
+        u, v = coords
+        return (
+            (torch.sin(v).square() * (self.r ** 2), 0.0),
+            (0.0, self.r ** 2)
+        )
+```
 
 ## License
