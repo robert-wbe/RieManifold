@@ -68,6 +68,6 @@ class UVSphere(EmbeddedRiemannianManifold):
 ```
 Here, the only method that needs to be implemented is the function returning the metric tensor ``g`` at the coordinates ``coords``. In the example above, for instance, the method returns the standard metric on the 2-sphere in spherical coordinates:
 
-$g_{\text{sphere}}=\begin{bmatrix}r^2 & 0 \\ 0 & sin^2(v)r^2\end{bmatrix}$ 
+$g=\begin{bmatrix}r^2 & 0 \\ 0 & sin^2(v)r^2\end{bmatrix}$ 
 
 ## License
