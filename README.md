@@ -7,7 +7,13 @@ pip install riemanifold
 ```
 
 ## Functionality & Usage
+
+
+> [!NOTE]  
+> Because *RieManifold* uses PyTorch's automatic differentiation for computations, all user-entered numerical operations must be ``torch``-compatible, such as ``torch.sin`` for sine. See a comprehensive list of available PyTorch operations [here](https://docs.pytorch.org/docs/stable/torch.html).
+
 ### Specifying a manifold
+
 With *RieManifold*, manifolds to perform computations on may be specified either *extrinsically*, via a concrete embedding into euclidian $m$-space, or *intrinsically*, by merely specifying the metric tensor field on a coordinate system.
 
 **Extrinsic Definition**\
@@ -22,17 +28,17 @@ class UVSphere(EmbeddedRiemannianManifold):
     coordinate_domain = [0.0, 2*torch.pi], [0.0, torch.pi]
     default_subdivisions = 41, 41
     
-    def embedded(self, coords: torch.Tensor) -> torch.Tensor:
-        u, v = torch.as_tensor(coords)
-        return torch.stack((
+    def embedded(self, coords):
+        u, v = coords
+        return (
             self.r * torch.sin(v) * torch.cos(u),
             self.r * torch.sin(v) * torch.sin(u),
             self.r * torch.cos(v)
-        ))
+        )
 ```
 
 As shown in the example, these class attributes and methods must be supplied:
-| Attribute | Type | Meaning |
+| Attribute / Method | Type | Meaning |
 | --------- | ---- | ------- |
 | ``embedding_dim`` | ``int`` | the dimension in which to embed the manifold (2 and 3 supported)
 | ``coordinate_domain`` | $n\times 2$ ``float`` | the bounds of the coordinate domain as a rectangular subset of $\mathbb{R}^n$
