@@ -16,7 +16,8 @@ pip install riemanifold
 
 With *RieManifold*, manifolds to perform computations on may be specified either *extrinsically*, via a concrete embedding into euclidian $m$-space, or *intrinsically*, by merely specifying the metric tensor field on a coordinate system.
 
-**Extrinsic Definition**\
+**Method 1: Extrinsic Definition**
+
 Formally, let $U\subset\mathbb{R}^n$ be a coordinate domain. Then a differentiable map $\varphi : U \to \mathbb{R}^m$ constitutes an embedding of an $n$-manifold into $m$-space. In this case, the manifold is endowed with natural pullback of the euclidian metric on $\mathbb{R}^m$ to define its intrinsic geometry.\
 The following shows how to construct a 2-sphere embedded into 3-space:
 ```python
@@ -41,11 +42,15 @@ As shown in the example, these class attributes and methods must be supplied:
 | Attribute / Method | Type | Meaning |
 | --------- | ---- | ------- |
 | ``embedding_dim`` | ``int`` | the dimension in which to embed the manifold (2 and 3 supported)
-| ``coordinate_domain`` | $n\times 2$ ``float`` | the bounds of the coordinate domain as a rectangular subset of $\mathbb{R}^n$
-| ``default_subdivisions`` | $n$ ``float`` | The amount of subdivisions across each coordinate axis when plotting
-| ``embedded`` | $n$ ``Tensor`` $\to$ $m$ ``Tensor`` | the parametric embedding function
+| ``coordinate_domain`` | $n\times 2$-``tuple`` | the bounds of the coordinate domain as a rectangular subset of $\mathbb{R}^n$
+| ``default_subdivisions`` | $n$-``tuple`` | The amount of subdivisions across each coordinate axis when plotting
+| ``embedded`` | $n$-``tuple`` $\to$ $m$-``tuple`` | the parametric embedding function
 
 > [!IMPORTANT]  
 > Both ways of specifying a manifold require the choice of a single coordinate system across the entire manifold. This simplification from the theoretical model of smooth manifolds, which allows a collection of coordinate charts (called atlas), was put in place to avoid excessive complication of the interface. It is important to be aware of, however, that some surfaces such as the 2-sphere do not admit a single coordinate system that is everywhere nondegenerate (e.g. the poles in standard coordinates), which may cause errors with computations involving these points.
+
+**Method 2: Intrinsic Definition**
+
+Formally, a Riemannian metric on a coordinate domain $U$ is a smoothly varying covariant 2-tensor field representing the local inner product for the tangent space at each point. The inner product at each point $p$ is a bilinear form $g_p : T_pM \times T_pM \to \mathbb{R}$ called the *metric tensor* and is represented by an $n\times n$ matrix. This matrix, as a function of the coordinates, is what the user must specify for the intrinsic manifold specification method.
 
 ## License
