@@ -13,15 +13,21 @@ import matplotlib.cm as cm
 
 class RiemannianManifold(ABC):
     @abstractmethod
-    def g(self, coords: torch.Tensor) -> torch.Tensor:
+    def g(self, coords: torch.Tensor) -> tuple[tuple[torch.Tensor, ...], ...]:
         """return the metric tensor g at the given extrinsic coordinates"""
         pass
+
+    def _g(self, coords: torch.Tensor) -> torch.Tensor:
+        coords = torch.as_tensor(coords)
+        return torch.stack([
+            torch.stack(row) for row in self.g(coords)
+        ])
 
     def compute_curve_length(self, coordinate_curve, a: float = 0.0, b: float = 1.0) -> float:
         d_path = nd.Derivative(coordinate_curve)
         result, error = integrate.quad(
             lambda t: np.sqrt(
-                np.einsum('mv,m,v->', self.g(coordinate_curve(t)).detach().numpy(), d_path(t), d_path(t))
+                np.einsum('mv,m,v->', self._g(coordinate_curve(t)).detach().numpy(), d_path(t), d_path(t))
             ),
             a=a, b=b
         )
@@ -31,10 +37,10 @@ class RiemannianManifold(ABC):
     def Gamma(self, coords) -> torch.Tensor:
         """return the Christoffel symbols at the given extrinsic coordinates"""
         coords = torch.as_tensor(coords)
-        deriv: torch.Tensor = torch.autograd.functional.jacobian(self.g, coords, create_graph=True)
+        deriv: torch.Tensor = torch.autograd.functional.jacobian(self._g, coords, create_graph=True)
         sum_deriv = deriv.permute(0, 1, 2) + deriv.permute(0, 2, 1) - deriv.permute(2, 0, 1)
         
-        g_inverse = torch.linalg.inv(self.g(coords))
+        g_inverse = torch.linalg.inv(self._g(coords))
         return 0.5 * torch.einsum('im, mkl->ikl', g_inverse, sum_deriv)
     
 
@@ -62,7 +68,7 @@ class RiemannianManifold(ABC):
         cur_length = 0.0
         while cur_length < length:
             v -= torch.einsum('kij, i, j -> k', self.Gamma(x), v, v)
-            cur_length += torch.sqrt(torch.einsum('ij, i, j -> ', self.g(x), v, v))
+            cur_length += torch.sqrt(torch.einsum('ij, i, j -> ', self._g(x), v, v))
             x += v
             curve_coords.append(x.clone())
         return torch.stack(curve_coords).T
@@ -106,7 +112,7 @@ class RiemannianManifold(ABC):
     def ric(self, coords) -> torch.Tensor:
         coords = torch.as_tensor(coords)
         """return the Ricci scalar at the given exirinsic coordinates"""
-        g_inverse = torch.linalg.inv(self.g(coords))
+        g_inverse = torch.linalg.inv(self._g(coords))
         return torch.einsum('ij, ij -> ', g_inverse, self.Ric(coords))
     
     def gaussian_curvature(self, coords) -> torch.Tensor:
@@ -121,22 +127,33 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
     default_subdivisions: tuple[int, int]
 
     @abstractmethod
-    def embedded(self, coords) -> torch.Tensor:
+    def embedded(self, coords) -> tuple[torch.Tensor | float, ...]:
         pass
+
+    def _embedded(self, coords) -> torch.Tensor:
+        coords = torch.as_tensor(coords)
+        return torch.stack([
+            torch.as_tensor(ec)
+            for ec in self.embedded(coords)
+        ])
 
     def basis(self, coords: torch.Tensor) -> torch.Tensor:
         coords = torch.as_tensor(coords)
-        jac: torch.Tensor = torch.autograd.functional.jacobian(self.embedded, coords, create_graph=True)
+        jac: torch.Tensor = torch.autograd.functional.jacobian(self._embedded, coords, create_graph=True)
         return jac
     
     def tangential_vector(self, coords: torch.Tensor, vec: torch.Tensor) -> torch.Tensor:
         coords, vec = torch.as_tensor(coords), torch.as_tensor(vec)
         return self.basis(coords) @ vec
 
-    def g(self, coords: torch.Tensor) -> torch.Tensor:
+    def _g(self, coords: torch.Tensor) -> torch.Tensor:
         coords = torch.as_tensor(coords)
         basis = self.basis(coords)
         return basis.T @ basis
+    
+    def g(self, coords: torch.Tensor) -> tuple[tuple[torch.Tensor, ...], ...]:
+        return self._g(coords).detach().numpy().tolist()
+
     
     def plt_init(self):
         self.plt_fig = plt.figure(figsize=(8, 8))
@@ -167,7 +184,7 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
                 u = np.linspace(self.coordinate_domain[0][0], self.coordinate_domain[0][1], subdivisions[0])
                 v = np.linspace(self.coordinate_domain[1][0], self.coordinate_domain[1][1], subdivisions[1])
                 UV = np.stack(np.meshgrid(u, v, indexing='ij'))
-                X, Y = self.embedded(UV)
+                X, Y = self._embedded(UV)
                 
                 # ---- ROWS ----
                 row_lines = [np.column_stack([X[row, :], Y[row, :]]) for row in range(subdivisions[0])]
@@ -187,7 +204,7 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
                 u = np.linspace(self.coordinate_domain[0][0], self.coordinate_domain[0][1], subdivisions[0])
                 v = np.linspace(self.coordinate_domain[1][0], self.coordinate_domain[1][1], subdivisions[1])
                 UV = np.stack(np.meshgrid(u, v))
-                X, Y, Z = self.embedded(UV)
+                X, Y, Z = self._embedded(UV)
             
                 self.plt_ax.plot_surface( #type:ignore
                     X, Y, Z, rstride=1, cstride=1, cmap=plt.get_cmap('viridis'),
@@ -203,7 +220,7 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
         match self.embedding_dim:
             case 2:
                 u, v = coords
-                X, Y = self.embedded(coords)
+                X, Y = self._embedded(coords)
                 eu, ev = self.basis(coords).T
                 if show_basis:
                     draw_2d_arrow((X, Y), eu.detach(), self.plt_ax, color='b', opacity=opacity)
@@ -217,7 +234,7 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
                     self.plt_ax.text(X+eps, Y+eps, f"({u:.2f}, {v:.2f})", color='red', fontsize=13) #type:ignore
             case 3:
                 u, v = coords
-                X, Y, Z = self.embedded(coords)
+                X, Y, Z = self._embedded(coords)
                 eu, ev = self.basis(coords).T
                 if show_basis:
                     draw_3d_arrow((X, Y, Z), eu.detach(), self.plt_ax, color='b', opacity=opacity)
@@ -234,10 +251,10 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
         t_vec = self.tangential_vector(coords, vec)
         match self.embedding_dim:
             case 2:
-                X, Y = self.embedded(coords).detach()
+                X, Y = self._embedded(coords).detach()
                 draw_2d_arrow((X, Y), t_vec.detach(), self.plt_ax, opacity=opacity)
             case 3:
-                X, Y, Z = self.embedded(coords).detach()
+                X, Y, Z = self._embedded(coords).detach()
                 draw_3d_arrow((X, Y, Z), t_vec.detach(), self.plt_ax, opacity=opacity)
             case _:
                 raise NotImplementedError
@@ -250,10 +267,10 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
     def __show_curve_tensor(self, UV):
         match self.embedding_dim:
             case 2:
-                X, Y = self.embedded(UV).detach()
+                X, Y = self._embedded(UV).detach()
                 self.plt_ax.plot(X, Y, color='red')
             case 3:
-                X, Y, Z = self.embedded(UV).detach()
+                X, Y, Z = self._embedded(UV).detach()
                 self.plt_ax.plot(X, Y, Z, color='red')
             case _:
                 raise NotImplementedError
@@ -314,22 +331,21 @@ class UVSphere(EmbeddedRiemannianManifold):
     
     
 
-    def g(self, coords: torch.Tensor) -> torch.Tensor:
+    def g(self, coords):
         """return the metric tensor g at $(theta, phi)$"""
-        coords = torch.as_tensor(coords)
         u, v = coords
-        return torch.stack((
-            torch.stack((torch.sin(v).square(), torch.tensor(0.0))),
-            torch.stack((torch.tensor(0.0), torch.tensor(1.0)))
-        ))
+        return (
+            (torch.sin(v).square(), torch.tensor(0.0)),
+            (torch.tensor(0.0), torch.tensor(1.0))
+        )
     
-    def embedded(self, coords: torch.Tensor) -> torch.Tensor:
-        u, v = torch.as_tensor(coords)
-        return torch.stack((
+    def embedded(self, coords):
+        u, v = coords
+        return (
             self.r * torch.sin(v) * torch.cos(u),
             self.r * torch.sin(v) * torch.sin(u),
             self.r * torch.cos(v)
-        ))
+        )
 
 class CartesianPlane(EmbeddedRiemannianManifold):
     embedding_dim = 2
@@ -339,17 +355,17 @@ class CartesianPlane(EmbeddedRiemannianManifold):
     def __init__(self):
         pass
 
-    def g(self, coords: torch.Tensor) -> torch.Tensor:
+    def g(self, coords):
         """return the metric tensor g at $(theta, phi)$"""
         u, v = coords
-        return torch.stack((
-            torch.stack((torch.tensor(1.0), torch.tensor(0.0))),
-            torch.stack((torch.tensor(0.0), torch.tensor(1.0)))
-        ))
+        return (
+            (torch.tensor(1.0), torch.tensor(0.0)),
+            (torch.tensor(0.0), torch.tensor(1.0))
+        )
     
-    def embedded(self, coords: torch.Tensor) -> torch.Tensor:
-        u, v = torch.as_tensor(coords)
-        return coords
+    def embedded(self, coords):
+        u, v = coords
+        return (u, v)
 
 class PolarPlane(EmbeddedRiemannianManifold):
     embedding_dim = 2
@@ -359,12 +375,12 @@ class PolarPlane(EmbeddedRiemannianManifold):
     def __init__(self):
         pass
     
-    def embedded(self, coords: torch.Tensor) -> torch.Tensor:
-        phi, r = torch.as_tensor(coords)
-        return torch.stack((
+    def embedded(self, coords):
+        phi, r = coords
+        return (
             r * torch.cos(phi),
             r * torch.sin(phi),
-        ))
+        )
 
 class Torus(EmbeddedRiemannianManifold):
     embedding_dim = 3
@@ -375,13 +391,13 @@ class Torus(EmbeddedRiemannianManifold):
     coordinate_domain = [0.0, 2*torch.pi], [0.0, 2*torch.pi]
     default_subdivisions = 61, 26
 
-    def embedded(self, coords: torch.Tensor) -> torch.Tensor:
-        phi_o, phi_i = torch.as_tensor(coords)
-        return torch.stack((
+    def embedded(self, coords):
+        phi_o, phi_i = coords
+        return (
             (self.ro + self.ri*torch.cos(phi_i)) * torch.cos(phi_o),
             (self.ro + self.ri*torch.cos(phi_i)) * torch.sin(phi_o),
             self.ri * torch.sin(phi_i)
-        ))
+        )
 
 class MobiusStrip(EmbeddedRiemannianManifold):
     embedding_dim = 3
@@ -392,18 +408,32 @@ class MobiusStrip(EmbeddedRiemannianManifold):
     coordinate_domain = [0.0, 2*torch.pi], [-0.5, 0.5]
     default_subdivisions = 62, 16
 
-    def embedded(self, coords: torch.Tensor) -> torch.Tensor:
-        phi, v = torch.as_tensor(coords)
-        return torch.stack((
+    def embedded(self, coords):
+        phi, v = coords
+        return (
             (self.r + self.w*v*torch.cos(phi/2)) * torch.cos(phi),
             (self.r + self.w*v*torch.cos(phi/2)) * torch.sin(phi),
             self.w * v * torch.sin(phi/2)
-        ))
+        )
 
 if __name__ == "__main__":
-    plane = PolarPlane()
-    plane.show_point(torch.tensor([torch.pi/6, 2.0]))
+    # plane = PolarPlane()
+    # plane.show_point(torch.tensor([torch.pi/6, 2.0]))
     # plane = CartesianPlane()
     # plane.show()
     # sphere = UVSphere(r=np.float64(1.0))
-    # sphere.show_point(torch.tensor([0, np.pi/4]))
+    # curve = coord_lerp([0.0, np.pi/8], [-np.pi/2, np.pi/2])
+    # vec = torch.tensor([0.0, 0.4])
+    # sphere.show_curve(curve)
+    # sphere.show_point([0, np.pi/4], show_basis=False)
+    # sphere.show_tangential_vector([0, np.pi/4], [0.0, 1.0])
+    # sphere.show_parallel_transport(curve, vec, n_substeps=10)
+
+    # torus = Torus(1, 0.3)
+    # torus.show()
+
+    strip = MobiusStrip()
+    # strip.show()
+
+    strip.show_parallel_transport(coord_lerp([0.0, 0.0], [2*np.pi, 0.0]), [0.0, 0.4], n_substeps=12)
+    # strip.show_source_geodesic([0.0, 0.0], [0.75, -1.0], length=2.5, show_initial_vector=False)
