@@ -23,7 +23,7 @@ class RiemannianManifold(ABC):
             lambda t: np.sqrt(
                 np.einsum('mv,m,v->', self.g(coordinate_curve(t)).detach().numpy(), d_path(t), d_path(t))
             ),
-            a=0.0, b=1.0
+            a=a, b=b
         )
         return result
 
@@ -86,17 +86,32 @@ class RiemannianManifold(ABC):
         return ckpt_coords, ckpt_vecs
         
 
-    def R(self, coords) -> np.ndarray:
+    def R(self, coords) -> torch.Tensor:
         """return the Riemannian curvature tensor at the given exirinsic coordinates"""
-        raise NotImplementedError
-    
-    def Ric(self, coords) -> np.ndarray:
-        """return the Ricci tensor at the given exirinsic coordinates"""
-        raise NotImplementedError
+        coords = torch.as_tensor(coords)
+        Gamma = self.Gamma(coords) # rvs
+        d_Gamma = torch.autograd.functional.jacobian(self.Gamma, coords, create_graph=True) # rvsm
 
-    def ric(self, coords) -> np.ndarray:
+        return (
+            torch.einsum('rvsm -> rsmv', d_Gamma)
+          - torch.einsum('rmsv -> rsmv', d_Gamma)
+          + torch.einsum('rml, lvs -> rsmv', Gamma, Gamma)
+          - torch.einsum('rvl, lms -> rsmv', Gamma, Gamma)
+        )
+    
+    def Ric(self, coords) -> torch.Tensor:
+        """return the Ricci tensor at the given exirinsic coordinates"""
+        return torch.einsum('cacb -> ab', self.R(coords))
+
+    def ric(self, coords) -> torch.Tensor:
+        coords = torch.as_tensor(coords)
         """return the Ricci scalar at the given exirinsic coordinates"""
-        raise NotImplementedError
+        g_inverse = torch.linalg.inv(self.g(coords))
+        return torch.einsum('ij, ij -> ', g_inverse, self.Ric(coords))
+    
+    def gaussian_curvature(self, coords) -> torch.Tensor:
+        """return the Gaussiam curvature (half the ricci scalar) at the given extrinsic coordinates"""
+        return self.ric(coords) / 2.0
 
 
 @dataclass
@@ -132,6 +147,7 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
                 self.plt_ax = self.plt_fig.add_subplot(projection='3d', computed_zorder=False)
             case _:
                 raise NotImplementedError
+        plt.margins(0)   # No padding at all for all plots
     
     def plt_show(self):
         match self.embedding_dim:
