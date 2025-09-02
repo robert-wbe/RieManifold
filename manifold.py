@@ -368,7 +368,7 @@ class PolarPlane(EmbeddedRiemannianManifold):
 
 class Torus(EmbeddedRiemannianManifold):
     embedding_dim = 3
-    def __init__(self, ro: float, ri: float):
+    def __init__(self, ro: float = 1.0, ri: float = 0.4):
         self.ro = ro
         self.ri = ri
 
