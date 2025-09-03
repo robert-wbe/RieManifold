@@ -13,14 +13,16 @@ import matplotlib.cm as cm
 
 class RiemannianManifold(ABC):
     @abstractmethod
-    def g(self, coords: torch.Tensor) -> tuple[tuple[torch.Tensor, ...], ...]:
+    def g(self, coords: torch.Tensor) -> tuple[tuple[torch.Tensor | float, ...], ...]:
         """return the metric tensor g at the given extrinsic coordinates"""
         pass
 
     def _g(self, coords: torch.Tensor) -> torch.Tensor:
         coords = torch.as_tensor(coords)
         return torch.stack([
-            torch.stack(row) for row in self.g(coords)
+            torch.stack([
+                torch.as_tensor(entry) for entry in row
+            ]) for row in self.g(coords)
         ])
 
     def compute_curve_length(self, coordinate_curve, a: float = 0.0, b: float = 1.0) -> float:
@@ -151,7 +153,7 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
         basis = self.basis(coords)
         return basis.T @ basis
     
-    def g(self, coords: torch.Tensor) -> tuple[tuple[torch.Tensor, ...], ...]:
+    def g(self, coords: torch.Tensor) -> tuple[tuple[torch.Tensor | float, ...], ...]:
         return self._g(coords).detach().numpy().tolist()
 
     
@@ -323,7 +325,7 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
 
 class UVSphere(EmbeddedRiemannianManifold):
     embedding_dim = 3
-    def __init__(self, r: np.float64):
+    def __init__(self, r: float):
         self.r = r
 
     coordinate_domain = [0.0, 2*torch.pi], [0.0, torch.pi]
@@ -335,8 +337,8 @@ class UVSphere(EmbeddedRiemannianManifold):
         """return the metric tensor g at $(theta, phi)$"""
         u, v = coords
         return (
-            (torch.sin(v).square(), torch.tensor(0.0)),
-            (torch.tensor(0.0), torch.tensor(1.0))
+            (torch.sin(v).square() * (self.r ** 2), 0.0),
+            (0.0, self.r ** 2)
         )
     
     def embedded(self, coords):
