@@ -1,5 +1,6 @@
 # Some cool sample visualizations made using the library
-from manifold import *
+from riemanifold.manifold import *
+from riemanifold.utils import coord_lerp
 import numpy as np
 import torch
 
