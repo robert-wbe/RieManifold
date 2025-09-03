@@ -3,7 +3,7 @@ import torch
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from src.riemanifold.utils import *
+from utils import *
 
 from scipy import integrate
 import numdifftools as nd
