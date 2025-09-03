@@ -10,7 +10,7 @@ authors = [
 ]
 description = "A package for performing geometric computations on Riemannian manifolds"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.26.2",
     "torch>=2.3.0",
@@ -23,8 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-license = "MIT"
-license-files = ["LICEN[CS]E*"]
+license = { file = "LICENSE" }
 
 [project.urls]
 Homepage = "https://github.com/robert-wbe/RieManifold"
