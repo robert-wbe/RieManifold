@@ -112,5 +112,3 @@ To get started, there are some out-of-the-box embedded manifolds available to ti
 | ``MobiusStrip(radius, width)`` <br> ``radius``: the base radius <br> ``width``: the width of the band | <img src="images/mobius_strip.png" alt="drawing" width="200"/> |
 | ``CartesianPlane()``| <img src="images/cartesian_plane.png" alt="drawing" width="200"/> |
 | ``PolarPlane()``| <img src="images/polar_plane.png" alt="drawing" width="200"/> |
-
-## License
