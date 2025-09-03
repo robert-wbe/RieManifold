@@ -3,7 +3,7 @@ import torch
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from utils import *
+from src.riemanifold.utils import *
 
 from scipy import integrate
 import numdifftools as nd
@@ -423,7 +423,8 @@ if __name__ == "__main__":
     # plane.show_point(torch.tensor([torch.pi/6, 2.0]))
     # plane = CartesianPlane()
     # plane.show()
-    # sphere = UVSphere(r=np.float64(1.0))
+    # sphere = UVSphere(r=1.0)
+    # sphere.show()
     # curve = coord_lerp([0.0, np.pi/8], [-np.pi/2, np.pi/2])
     # vec = torch.tensor([0.0, 0.4])
     # sphere.show_curve(curve)
@@ -431,11 +432,11 @@ if __name__ == "__main__":
     # sphere.show_tangential_vector([0, np.pi/4], [0.0, 1.0])
     # sphere.show_parallel_transport(curve, vec, n_substeps=10)
 
-    # torus = Torus(1, 0.3)
+    # torus = Torus(1, 0.4)
     # torus.show()
 
     strip = MobiusStrip()
-    # strip.show()
+    strip.show()
 
-    strip.show_parallel_transport(coord_lerp([0.0, 0.0], [2*np.pi, 0.0]), [0.0, 0.4], n_substeps=12)
+    # strip.show_parallel_transport(coord_lerp([0.0, 0.0], [2*np.pi, 0.0]), [0.0, 0.4], n_substeps=12)
     # strip.show_source_geodesic([0.0, 0.0], [0.75, -1.0], length=2.5, show_initial_vector=False)
