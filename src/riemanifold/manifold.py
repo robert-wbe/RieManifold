@@ -38,7 +38,7 @@ class RiemannianManifold(ABC):
 
     def Gamma(self, coords) -> torch.Tensor:
         """return the Christoffel symbols at the given extrinsic coordinates"""
-        coords = torch.as_tensor(coords)
+        coords = torch.as_tensor(coords, dtype=torch.float32)
         deriv: torch.Tensor = torch.autograd.functional.jacobian(self._g, coords, create_graph=True)
         sum_deriv = deriv.permute(0, 1, 2) + deriv.permute(0, 2, 1) - deriv.permute(2, 0, 1)
         
@@ -46,7 +46,7 @@ class RiemannianManifold(ABC):
         return 0.5 * torch.einsum('im, mkl->ikl', g_inverse, sum_deriv)
     
 
-    def is_geodesic(self, curve, resolution=100) -> bool:
+    def is_geodesic(self, curve, resolution=100, tolerance: float = 1e-4) -> bool:
         ts = torch.linspace(0.0, 1.0, resolution)
 
         def v(t): # input: single number
@@ -57,7 +57,8 @@ class RiemannianManifold(ABC):
         return all(
             torch.allclose(
                 dv_dt(t),
-                -torch.einsum('kij, i, j -> k', self.Gamma(curve(t)), v(t), v(t))
+                -torch.einsum('kij, i, j -> k', self.Gamma(curve(t)), v(t), v(t)),
+                atol=tolerance
             )
             for t in ts
         )
@@ -96,7 +97,7 @@ class RiemannianManifold(ABC):
 
     def R(self, coords) -> torch.Tensor:
         """return the Riemannian curvature tensor at the given exirinsic coordinates"""
-        coords = torch.as_tensor(coords)
+        coords = torch.as_tensor(coords, dtype=torch.float32)
         Gamma = self.Gamma(coords) # rvs
         d_Gamma = torch.autograd.functional.jacobian(self.Gamma, coords, create_graph=True) # rvsm
 
@@ -140,7 +141,7 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
         ])
 
     def basis(self, coords: torch.Tensor) -> torch.Tensor:
-        coords = torch.as_tensor(coords)
+        coords = torch.as_tensor(coords, dtype=torch.float32)
         jac: torch.Tensor = torch.autograd.functional.jacobian(self._embedded, coords, create_graph=True)
         return jac
     
@@ -325,7 +326,7 @@ class EmbeddedRiemannianManifold(RiemannianManifold):
 
 class UVSphere(EmbeddedRiemannianManifold):
     embedding_dim = 3
-    def __init__(self, r: float):
+    def __init__(self, r: float = 1.0):
         self.r = r
 
     coordinate_domain = [0.0, 2*torch.pi], [0.0, torch.pi]
