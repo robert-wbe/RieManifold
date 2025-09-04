@@ -66,6 +66,14 @@ def set_axes_equal(ax):
     # Now fix the box aspect
     ax.set_box_aspect([1, 1, 1])
 
+def create_curve(curve_lambda):
+    def fn(t):
+        t = torch.as_tensor(t)
+        return torch.stack([
+            torch.as_tensor(dim).expand_as(t)
+            for dim in curve_lambda(t)
+        ])
+    return fn
+
 def coord_lerp(p1, p2):
-    p1, p2 = torch.as_tensor(p1), torch.as_tensor(p2)
-    return lambda t: torch.stack(((1-t)*p1[0]+t*p2[0], (1-t)*p1[1]+t*p2[1]))
+    return create_curve(lambda t: [c1+t*(c2-c1) for c1, c2 in zip(p1, p2)])
