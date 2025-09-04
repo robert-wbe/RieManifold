@@ -23,7 +23,7 @@ The following shows how to construct a 2-sphere embedded into 3-space:
 ```python
 class UVSphere(EmbeddedRiemannianManifold):
     embedding_dim = 3
-    def __init__(self, r: float):
+    def __init__(self, r: float = 1.0):
         self.r = r
 
     coordinate_domain = [0.0, 2*torch.pi], [0.0, torch.pi]
@@ -56,7 +56,7 @@ It is also possible to define geometric concepts such as lengths, angles and cur
 The following example shows how to create the same sphere manifold as shown above, but purely intrinsically:
 ```python
 class UVSphere(EmbeddedRiemannianManifold):
-    def __init__(self, r: float):
+    def __init__(self, r: float = 1.0):
         self.r = r
     
     def g(self, coords):
@@ -75,16 +75,36 @@ Here, the only method that needs to be implemented is the function returning the
 ```
 
 ### Specifying curves on the manifold
-Curves that represent simple linear interpolations in coordinate space can be constructed with the ``coord_lerp`` utility method:
+Curves that represent simple linear interpolations in coordinate space can be constructed with the ``coord_lerp`` utility method, which takes two points in coordinate space as arguments and returns the linear path between them:
 ```python
 curve = coord_lerp([0.0, torch.pi/8], [-torch.pi/2, torch.pi/2])
 ```
-Custom curves must be supplied as lambdas/callables accepting a single time argument. By convention, the domain of interest should be the unit interval, so as to match the signature $\lambda : [0, 1] \to U$.
+Custom curves can be specified with ``create_curve(curve_lambda)`` with the parametric curve function as the argument. The lsmbda should take a single a single time parameter and return its corresponding point on the curve in $n$-dimensional coordinate space. By convention, the domain of interest should be the unit interval, so as to match the signature $\lambda : [0, 1] \to U$.
 ```python
-coordinate_path = lambda t: torch.stack([0.25*t, t*torch.pi])
+curve = create_curve(lambda t: (2*torch.pi*t, torch.sin(20*torch.pi*t)))
 ```
+Showing the curve in the example above gives the following result:
+```python
+torus = Torus()
+torus.show_curve(curve)
+```
+<img src="images/sin_path_on_torus.png" alt="drawing" width="300"/>
+
 ### Plotting the manifold and tangential vectors
 Embedded manifolds can be plotted, along with geometric objects on them. ``manifold.show()`` just displays the manifold, while ``manifold.show_curve(<curve>)``, ``manifold.show_point(<point>)`` and ``manifold.show_tangential_vector(<point>, <vector>)`` can be used to display basic geometry on the embedded manifold. All arguments are interpreted in coordinate space.
+
+**Plotting multiple objects in a single plot**
+
+The methods mentioned above will each produce a separate plot containing just the manifold as well as the specific object they are meant to show. To show multiple objects in the same plot, one needs to set the ``new_plot`` argument to ``False`` in each call to show an object, and then enclose the block of plotting calls which should appear together in ``manifold.plt_init()`` and ``manifold.plt_show()`` as in the following example:
+```python
+torus = Torus()
+# Objects shown between init and show will appear in the same plot
+torus.plt_init()
+torus.show(new_plot=False)
+torus.show_point((0, 0), new_plot=False)
+torus.show_point((0, 1), new_plot=False)
+torus.plt_show()
+```
 
 ### Geometric computations
 
